@@ -1,0 +1,72 @@
+{% extends "store/base.html" %}
+{% load static %}
+{% block title %}
+  {{ product.name }}
+{% endblock title %}
+{% block content %}
+  <div class="row">
+    <div class="col-md-6">
+      {% if product.image %}
+        <img src="{{ product.image.url }}"
+             class="img-fluid"
+             alt="{{ product.name }}">
+      {% else %}
+        <img src="{% static 'placeholder.png' %}" class="img-fluid" alt="No image">
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h2>{{ product.name }}</h2>
+      <p class="text-muted">Category: {{ product.category.name }}</p>
+      <p>{{ product.description }}</p>
+      <h4 class="fw-bold">${{ product.price }}</h4>
+      <p>In stock: {{ product.stock }}</p>
+      {% if in_cart %}
+        <a href="{% url 'store:cart_view' %}" class="btn btn-secondary">In the Cart</a>
+      {% else %}
+        <button id="add-to-cart-btn"
+                class="btn btn-success"
+                {% if product.stock == 0 %}disabled{% endif %}>Add to Cart</button>
+      {% endif %}
+      <a href="{% url 'store:product_list' %}" class="btn btn-link mt-3">Back to Catalog</a>
+    </div>
+  </div>
+  <script>
+	document.addEventListener('DOMContentLoaded', function () {
+		const btn = document.getElementById('add-to-cart-btn')
+		if (!btn) return
+
+		function updateCartBadge(count) {
+			const badge = document.getElementById('cart-count')
+			if (!badge) return
+			badge.textContent = count > 0 ? count : ''
+		}
+
+		btn.addEventListener('click', function () {
+			fetch("{% url 'store:add_to_cart' product.pk %}", {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': '{{ csrf_token }}',
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+			})
+				.then(response => response.json())
+				.then(data => {
+					if (data.success) {
+						updateCartBadge(data.cart_item_count)
+
+						const link = document.createElement('a')
+						link.href = data.cart_url
+						link.className = 'btn btn-secondary'
+						link.textContent = 'In the Cart'
+						btn.replaceWith(link)
+					} else {
+						alert('Could not add to cart')
+					}
+				})
+				.catch(() => {
+					alert('Network error, please try again')
+				})
+		})
+	})
+  </script>
+{% endblock content %}
