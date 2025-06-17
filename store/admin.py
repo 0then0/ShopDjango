@@ -72,7 +72,8 @@ class OrderItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["price_at_order"].required = False
+        if "price_at_order" in self.fields:
+            self.fields["price_at_order"].required = False
 
     def clean(self):
         cleaned = super().clean()

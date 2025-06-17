@@ -8,6 +8,7 @@ class Category(models.Model):
     slug = models.SlugField(unique=True)
 
     class Meta:
+        ordering = ["name"]
         permissions = [("manage_category", "Can add/change/delete category")]
 
     def __str__(self):
@@ -23,6 +24,7 @@ class Product(models.Model):
     image = models.ImageField(upload_to="product_images/", blank=True)
 
     class Meta:
+        ordering = ["name"]
         permissions = [("manage_product", "Can add/change/delete product")]
 
     def __str__(self):
@@ -30,6 +32,9 @@ class Product(models.Model):
 
 
 class Cart(models.Model):
+    class Meta:
+        ordering = ["id"]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -60,6 +65,9 @@ class Order(models.Model):
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
     ]
+
+    class Meta:
+        ordering = ["id"]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=50)
