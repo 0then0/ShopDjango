@@ -29,7 +29,7 @@ def product_list(request):
     category_id = request.GET.get("category", "").strip()
     min_price = request.GET.get("min_price", "").strip()
     max_price = request.GET.get("max_price", "").strip()
-    in_stock = request.GET.get("in_stock")  # 'on' если чекнут
+    in_stock = request.GET.get("in_stock")
 
     if q:
         qs = qs.filter(models.Q(name__icontains=q) | models.Q(description__icontains=q))
@@ -218,30 +218,21 @@ def add_to_cart(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        item, created = CartItem.objects.get_or_create(cart=cart, product=product)
-        if not created:
-            item.quantity += 1
-            item.save()
     else:
-        # for anonymous users: store the dictionary {product_id: quantity} in the session
-        cart = request.session.get("cart", {})
-        cart[str(pk)] = cart.get(str(pk), 0) + 1
-        request.session["cart"] = cart
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+    item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+    if not created:
+        item.quantity += 1
+        item.save()
 
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse(
-            {
-                "success": True,
-                "cart_url": reverse("store:cart_view"),
-            }
-        )
-
-    cart_count = get_cart_count(request)["cart_item_count"]
     return JsonResponse(
         {
             "success": True,
+            "cart_item_count": cart.items.aggregate(total=models.Sum("quantity"))[
+                "total"
+            ]
+            or 0,
             "cart_url": reverse("store:cart_view"),
-            "cart_item_count": cart_count,
         }
     )
 

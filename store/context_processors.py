@@ -1,6 +1,6 @@
 from django.db import models
 
-from .models import Cart
+from .models import Cart, CartItem
 
 
 def cart_item_count(request):
@@ -12,8 +12,12 @@ def cart_item_count(request):
     total = 0
 
     if request.user.is_authenticated:
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-        total = cart.items.aggregate(total_qty=models.Sum("quantity"))["total_qty"] or 0
+        return {
+            "cart_item_count": CartItem.objects.filter(
+                cart__user=request.user
+            ).aggregate(total=models.Sum("quantity"))["total"]
+            or 0
+        }
     else:
         session_cart = request.session.get("cart", {})
         total = sum(session_cart.values())

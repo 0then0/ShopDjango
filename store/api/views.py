@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from store.models import CartItem, Category, Order, Product
+from store.models import Cart, CartItem, Category, Order, OrderItem, Product
 
 from .permissions import IsStaffOrOwner
 from .serializers import (
@@ -28,6 +28,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     filterset_fields = ["category", "price", "stock"]
     search_fields = ["name", "description"]
 
+    pagination_class = None
+
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
@@ -43,6 +45,10 @@ class CartViewSet(viewsets.ModelViewSet):
         # handle guest session cart separately or error
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    def perform_create(self, serializer):
+        cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        serializer.save(cart=cart)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
@@ -55,7 +61,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Order.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        user = self.request.user
+        cart_items = CartItem.objects.filter(cart__user=user)
+
+        total = sum(item.product.price * item.quantity for item in cart_items)
+
+        order = serializer.save(user=user, total_price=total)
+
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price_at_order=item.product.price,
+            )
+
+        cart_items.delete()
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
